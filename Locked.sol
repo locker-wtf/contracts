@@ -8,12 +8,10 @@ import "./ILockedNFT.sol";
 
 contract Locked is Ownable {
     ILockedNFT LOCKED_NFT;
-    uint256 WITHDRAW_PERIOD = 604800; //86400*7
     uint256 FEE = 5; //0.05%
 
     bool init;
     address feeAddr;
-    mapping(uint256 => uint256) withdrawConfirmTime;
     mapping(uint256 => uint8) withdrawStatus;
 
     event DepositEvt(
@@ -24,7 +22,6 @@ contract Locked is Ownable {
         uint256 time,
         bytes32 data
     );
-    event WithdrawApplyEvt(address owner, uint256 _tokenId, uint256 time);
     event WithdrawEvt(address owner, uint256 _tokenId, uint256 time);
 
     function setLockedNFT(ILockedNFT _addr) public onlyOwner {
@@ -87,30 +84,9 @@ contract Locked is Ownable {
         );
     }
 
-    function applyWithdraw(uint256 _tokenId) public {
-        address nftOwner = LOCKED_NFT.ownerOf(_tokenId);
-        require(msg.sender == nftOwner, "Operation without permission");
-
-        require(withdrawConfirmTime[_tokenId] == 0, "Do not apply again");
-
-        ILockedNFT.Metadata memory _metadata = LOCKED_NFT.metadata(_tokenId);
-        uint256 confirmTime = block.timestamp + WITHDRAW_PERIOD;
-        require(confirmTime > _metadata.time, "Not yet the withdrawal time");
-
-        withdrawConfirmTime[_tokenId] = confirmTime;
-
-        emit WithdrawApplyEvt(msg.sender, _tokenId, block.timestamp);
-    }
-
     function withdraw(uint256 _tokenId) public {
         address nftOwner = LOCKED_NFT.ownerOf(_tokenId);
         require(msg.sender == nftOwner, "Operation without permission");
-
-        require(
-            withdrawConfirmTime[_tokenId] != 0 &&
-                withdrawConfirmTime[_tokenId] < block.timestamp,
-            "Not yet the withdrawal time"
-        );
 
         require(withdrawStatus[_tokenId] == 0, "Has been withdrawn");
         withdrawStatus[_tokenId] = 1;
